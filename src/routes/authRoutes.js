@@ -71,7 +71,7 @@ router.get('/profile', async function (req, res) {
 
 router.post('/getProfile', async function (req, res) {
     res.setHeader('Content-Type', 'application/json');
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization ? req.headers.authorization.split(' ')[1] : null;
     const { username } = req.body; // Mengambil username dari body
 
     if (!token) {
@@ -111,7 +111,7 @@ router.post('/getProfile', async function (req, res) {
 
 router.post('/logout', async function (req, res) {
     res.setHeader('Content-Type', 'application/json');
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization ? req.headers.authorization.split(' ')[1] : null;
 
     if (!token) {
         return res.status(401).json({ status: "FAILED", message: "Token diperlukan" });
