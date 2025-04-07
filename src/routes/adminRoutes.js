@@ -1,30 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const adminModel = require('../models/adminModel'); // Pastikan model ini ada
+const adminModel = require('../models/adminModel');
+const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
-// Middleware untuk memeriksa apakah user adalah superadmin
+// Cek apakah JWT (dari body) memiliki role superadmin
 const isSuperAdmin = (req, res, next) => {
-    const token = req.headers.authorization ? req.headers.authorization.split(' ')[1] : null;
-
-    if (!token) {
-        return res.status(401).json({ status: "FAILED", message: "Token diperlukan" });
-    }
+    const token = req.body.token;
+    if (!token) return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role !== 'superadmin') {
-            return res.status(403).json({ status: "FAILED", message: "Akses ditolak: Hanya super admin yang diperbolehkan" });
+            return res.status(403).json({ status: "FAILED", message: "Hanya superadmin yang diperbolehkan" });
         }
         next();
-    } catch (error) {
-        return res.status(401).json({ status: "FAILED", message: "Token tidak valid" });
+    } catch (err) {
+        return res.status(401).json({ status: "FAILED", message: "Token JWT tidak valid" });
     }
 };
 
-// Tambah admin baru
-router.post('/add', isSuperAdmin, async (req, res) => {
+// Tambah admin
+router.post('/add', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { username, password, full_name, email, role } = req.body;
 
     if (!username || !password || !full_name || !email || !role) {
@@ -40,8 +38,8 @@ router.post('/add', isSuperAdmin, async (req, res) => {
     }
 });
 
-// Ambil daftar admin
-router.post('/users/list', isSuperAdmin, async (req, res) => {
+// Daftar admin
+router.post('/users/list', validateGlobalToken, isSuperAdmin, async (req, res) => {
     try {
         const admins = await adminModel.getAllAdmins();
         return res.status(200).json({ status: "SUCCESS", admins });
@@ -51,63 +49,50 @@ router.post('/users/list', isSuperAdmin, async (req, res) => {
     }
 });
 
-// Ambil detail admin berdasarkan ID
-router.post('/users/detail', isSuperAdmin, async (req, res) => {
-    const { id } = req.body; // Mengambil ID dari body
-
-    if (!id) {
-        return res.status(400).json({ status: "FAILED", message: "ID admin harus diisi" });
-    }
+// Detail admin
+router.post('/users/detail', validateGlobalToken, isSuperAdmin, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ status: "FAILED", message: "ID admin harus diisi" });
 
     try {
         const admin = await adminModel.getAdminById(id);
-        if (!admin) {
-            return res.status(404).json({ status: "FAILED", message: "Admin tidak ditemukan" });
-        }
+        if (!admin) return res.status(404).json({ status: "FAILED", message: "Admin tidak ditemukan" });
         return res.status(200).json({ status: "SUCCESS", admin });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat mengambil detail admin" });
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan" });
     }
 });
 
-// Update data admin
-router.post('/users/update', isSuperAdmin, async (req, res) => {
+// Update admin
+router.post('/users/update', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { id, username, full_name, email, role } = req.body;
-
     if (!id || !username || !full_name || !email || !role) {
         return res.status(400).json({ status: "FAILED", message: "Semua field harus diisi" });
     }
 
     try {
         const updatedAdmin = await adminModel.updateAdmin(id, { username, full_name, email, role });
-        if (!updatedAdmin) {
-            return res.status(404).json({ status: "FAILED", message: "Admin tidak ditemukan" });
-        }
-        return res.status(200).json({ status: "SUCCESS", message: "Data admin berhasil diperbarui", admin: updatedAdmin });
+        if (!updatedAdmin) return res.status(404).json({ status: "FAILED", message: "Admin tidak ditemukan" });
+        return res.status(200).json({ status: "SUCCESS", message: "Admin diperbarui", admin: updatedAdmin });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat memperbarui data admin" });
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan" });
     }
 });
 
 // Hapus admin
-router.post('/users/delete', isSuperAdmin, async (req, res) => {
+router.post('/users/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { id } = req.body;
-
-    if (!id) {
-        return res.status(400).json({ status: "FAILED", message: "ID admin harus diisi" });
-    }
+    if (!id) return res.status(400).json({ status: "FAILED", message: "ID admin harus diisi" });
 
     try {
-        const deletedAdmin = await adminModel.deleteAdmin(id);
-        if (!deletedAdmin) {
-            return res.status(404).json({ status: "FAILED", message: "Admin tidak ditemukan" });
-        }
-        return res.status(200).json({ status: "SUCCESS", message: "Admin berhasil dihapus" });
+        const deleted = await adminModel.deleteAdmin(id);
+        if (!deleted) return res.status(404).json({ status: "FAILED", message: "Admin tidak ditemukan" });
+        return res.status(200).json({ status: "SUCCESS", message: "Admin dihapus" });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat menghapus admin" });
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan" });
     }
 });
 
