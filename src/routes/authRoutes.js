@@ -105,4 +105,14 @@ router.post('/logout', validateGlobalToken, async (req, res) => {
     }
 });
 
+router.post('/users/list', validateGlobalToken, async (req, res) => {
+    try {
+        const users = await userModel.getAllUsers();
+        return res.status(200).json({ status: "SUCCESS", users });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat mengambil daftar user" });
+    }
+});
+
 module.exports = router;

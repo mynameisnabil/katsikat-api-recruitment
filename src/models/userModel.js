@@ -45,5 +45,15 @@ module.exports = {
             console.error(error);
             return null;
         }
+    },
+
+    getAllUsers: async () => {
+        try {
+            const [rows] = await pool.query('SELECT username, full_name, email, role, created_at FROM users');
+            return rows;
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
     }
 };
