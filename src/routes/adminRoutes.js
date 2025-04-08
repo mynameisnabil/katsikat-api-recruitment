@@ -39,7 +39,7 @@ router.post('/add', validateGlobalToken, isSuperAdmin, async (req, res) => {
 });
 
 // Daftar admin
-router.post('/users/list', validateGlobalToken, isSuperAdmin, async (req, res) => {
+router.post('/list', validateGlobalToken, isSuperAdmin, async (req, res) => {
     try {
         const admins = await adminModel.getAllAdmins();
         return res.status(200).json({ status: "SUCCESS", admins });
@@ -50,7 +50,7 @@ router.post('/users/list', validateGlobalToken, isSuperAdmin, async (req, res) =
 });
 
 // Detail admin
-router.post('/users/detail', validateGlobalToken, isSuperAdmin, async (req, res) => {
+router.post('/detail', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ status: "FAILED", message: "ID admin harus diisi" });
 
@@ -65,7 +65,7 @@ router.post('/users/detail', validateGlobalToken, isSuperAdmin, async (req, res)
 });
 
 // Update admin
-router.post('/users/update', validateGlobalToken, isSuperAdmin, async (req, res) => {
+router.post('/update', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { id, username, full_name, email, role } = req.body;
     if (!id || !username || !full_name || !email || !role) {
         return res.status(400).json({ status: "FAILED", message: "Semua field harus diisi" });
@@ -82,7 +82,7 @@ router.post('/users/update', validateGlobalToken, isSuperAdmin, async (req, res)
 });
 
 // Hapus admin
-router.post('/users/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
+router.post('/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ status: "FAILED", message: "ID admin harus diisi" });
 
