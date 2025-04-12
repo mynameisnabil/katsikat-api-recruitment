@@ -60,7 +60,7 @@ router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) =
 });
 
 // POST /api/list → Ambil daftar kandidat
-router.post('/list', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/list', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     try {
         const candidates = await candidateModel.getAllCandidates();
         
@@ -79,7 +79,7 @@ router.post('/list', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/detail → Ambil detail kandidat
-router.post('/detail', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/detail', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { candidate_id } = req.body;
     
     if (!candidate_id) {
@@ -114,7 +114,7 @@ router.post('/detail', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/admin/candidates/status → Update status kandidat
-router.post('/update_status', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/update_status',validateGlobalToken,  isAdminOrSuperAdmin, async (req, res) => {
     const { candidate_id, position_id, status_id } = req.body;
     
     if (!candidate_id || !position_id || !status_id) {
@@ -148,7 +148,7 @@ router.post('/update_status', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/admin/assign → Assign kandidat
-router.post('/assign', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/assign', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { candidate_id, position_id, status_id } = req.body;
     
     if (!candidate_id || !position_id || !status_id) {
