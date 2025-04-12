@@ -63,7 +63,7 @@ router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) =
 });
 
 // POST /api/list → Ambil daftar materi
-router.post('/list', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/list',validateGlobalToken,  isAdminOrSuperAdmin, async (req, res) => {
     try {
         const materials = await studyMaterialModel.getAllStudyMaterials();
         
@@ -82,7 +82,7 @@ router.post('/list', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/detail → Ambil detail materi
-router.post('/detail', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/detail',validateGlobalToken,  isAdminOrSuperAdmin, async (req, res) => {
     const { material_id } = req.body;
     
     if (!material_id) {
@@ -117,7 +117,7 @@ router.post('/detail', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/update → Update materi pembelajaran
-router.post('/update', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/update', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { material_id, title, description, file_url, thumbnail } = req.body;
     
     if (!material_id || !title || !description || !file_url) {
@@ -187,7 +187,7 @@ router.post('/delete', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/add_candidate_to_study → Tambah candidate dengan id_candidate dan study id
-router.post('/add_candidate_to_study', isAdminOrSuperAdmin, async (req, res) => {
+router.post('/add_candidate_to_study', validateGlobalToken,  isAdminOrSuperAdmin, async (req, res) => {
     const { study_id, candidate_id } = req.body;
     
     if (!study_id || !candidate_id) {
