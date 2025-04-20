@@ -12,10 +12,10 @@ const addCandidate = async (candidateData) => {
     return { id: result.insertId, ...candidateData };
 };
 
-// Get list of all candidates
 const getAllCandidates = async () => {
     const [candidates] = await pool.query(`
         SELECT 
+            c.id as candidate_id, 
             c.*, 
             u.username, 
             COALESCE(s.status_name, '-') as status_name,
@@ -29,8 +29,11 @@ const getAllCandidates = async () => {
     
     // Handle candidates that don't have positions assigned yet
     return candidates.map(candidate => {
+        // Remove the duplicate 'id' field if it exists
+        const { id, ...rest } = candidate;
         return {
-            ...candidate,
+            ...rest,
+            candidate_id: candidate.candidate_id || '-',
             status_name: candidate.status_name || '-',
             position_name: candidate.position_name || '-'
         };
@@ -41,7 +44,7 @@ const getAllCandidates = async () => {
 const getCandidateById = async (candidateId) => {
     // Get candidate basic information
     const [candidateRows] = await pool.query(`
-        SELECT c.*, u.username, u.email as user_email
+        SELECT c.id as candidate_id, c.*, u.username, u.email as user_email
         FROM candidates c
         LEFT JOIN users u ON c.user_id = u.id
         WHERE c.id = ?
@@ -122,8 +125,12 @@ const getCandidateById = async (candidateId) => {
         };
     }
     
-    return candidate;
+    // Remove the duplicate 'id' field if it exists
+    const { id, ...rest } = candidate;
+    return rest;
 };
+
+
 
 // Update candidate status in a position
 const updateCandidateStatus = async (candidateId, positionId, statusId) => {
