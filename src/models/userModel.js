@@ -49,7 +49,7 @@ module.exports = {
 
     getAllUsers: async () => {
         try {
-            const [rows] = await pool.query('SELECT username, full_name, email, role, created_at FROM users');
+            const [rows] = await pool.query('SELECT id as user_id, username, full_name, email, role, created_at FROM users');
             return rows;
         } catch (error) {
             console.error(error);

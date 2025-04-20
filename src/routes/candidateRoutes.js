@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const redis = require('ioredis');
 const redisClient = new redis();
 const candidateModel = require('../models/candidateModel');
+const statusModel = require('../models/statusModel');
+const positionModel = require('../models/positionModel');
 const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
@@ -78,6 +80,42 @@ router.post('/list', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) 
     }
 });
 
+router.post('/list_position', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    try {
+        const position = await positionModel.getAllPositions();
+        
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: "Berhasil mengambil daftar kandidat",
+            data : position
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ 
+            status: "FAILED", 
+            message: "Terjadi kesalahan saat mengambil daftar kandidat" 
+        });
+    }
+});
+
+router.post('/list_status', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    try {
+        const status = await statusModel.getAllStatuses();
+        
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: "Berhasil mengambil daftar kandidat",
+            data : status
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ 
+            status: "FAILED", 
+            message: "Terjadi kesalahan saat mengambil daftar kandidat" 
+        });
+    }
+});
+
 // POST /api/detail → Ambil detail kandidat
 router.post('/detail', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { candidate_id } = req.body;
@@ -102,7 +140,7 @@ router.post('/detail', validateGlobalToken, isAdminOrSuperAdmin, async (req, res
         return res.status(200).json({
             status: "SUCCESS",
             message: "Berhasil mengambil detail kandidat",
-            candidate
+            data : candidate
         });
     } catch (error) {
         console.error(error);
@@ -112,6 +150,83 @@ router.post('/detail', validateGlobalToken, isAdminOrSuperAdmin, async (req, res
         });
     }
 });
+
+router.post('/status_candidate', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    const { candidate_id } = req.body;
+    
+    if (!candidate_id) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "ID kandidat diperlukan"
+        });
+    }
+    
+    try {
+        const status = await statusModel.getStatusById(candidate_id);
+        
+        if (!status) {
+            return res.status(404).json({
+                status: "FAILED",
+                message: "Kandidat tidak ditemukan"
+            });
+        }
+        
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: "Berhasil mengambil detail kandidat",
+            data: {
+                candidate_id,
+                ...status
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            status: "FAILED",
+            message: "Terjadi kesalahan saat mengambil detail kandidat"
+        });
+    }
+});
+
+router.post('/position_candidate', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    const { candidate_id } = req.body;
+    
+    if (!candidate_id) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "ID kandidat diperlukan"
+        });
+    }
+    
+    try {
+        const position = await positionModel.getPositionById(candidate_id);
+        
+        if (!position) {
+            return res.status(404).json({
+                status: "FAILED",
+                message: "Kandidat tidak ditemukan"
+            });
+        }
+        
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: "Berhasil mengambil detail kandidat",
+            data: {
+                candidate_id,
+                ...position
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            status: "FAILED",
+            message: "Terjadi kesalahan saat mengambil detail kandidat"
+        });
+    }
+});
+
+
+
 
 // POST /api/admin/candidates/status → Update status kandidat
 router.post('/update_status',validateGlobalToken,  isAdminOrSuperAdmin, async (req, res) => {
