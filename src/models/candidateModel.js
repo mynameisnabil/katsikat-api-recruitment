@@ -59,7 +59,6 @@ const getCandidateById = async (candidateId) => {
     // Get candidate positions with status
     const [positionsRows] = await pool.query(`
         SELECT 
-            cp.id as candidate_position_id,
             cp.candidate_id,
             cp.position_id,
             cp.status_id,
@@ -75,7 +74,7 @@ const getCandidateById = async (candidateId) => {
     `, [candidateId]);
     
     // Set default empty array if no positions found
-    candidate.positions = positionsRows.length > 0 ? positionsRows : [{ 
+    candidate.data_user = positionsRows.length > 0 ? positionsRows : [{ 
         position_name: '-', 
         status_name: '-' 
     }];
@@ -125,10 +124,13 @@ const getCandidateById = async (candidateId) => {
         };
     }
     
-    // Remove the duplicate 'id' field if it exists
-    const { id, ...rest } = candidate;
+    // Remove 'candidate_position_id' from the response
+    const { candidate_position_id, ...rest } = candidate;
     return rest;
 };
+
+
+
 
 
 
