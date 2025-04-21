@@ -7,6 +7,47 @@ const userModel = require('../models/userModel');
 const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
+
+const isSuperAdmin = async (req, res, next) => {
+    // Ambil token dari header Authorization
+    const token = req.body.token
+    if (!token) {
+        return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
+    }
+
+    try {
+        // Verifikasi token menggunakan JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Periksa apakah role adalah admin atau superadmin
+        if (decoded.role !== 'superadmin') {
+            return res.status(403).json({ status: "FAILED", message: "Hanya admin dan superadmin yang diperbolehkan" });
+        }
+
+        // Periksa token di Redis
+        const storedToken = await redisClient.get(`token:${decoded.username}`);
+        if (!storedToken || storedToken !== token) {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid atau kadaluarsa" });
+        }
+
+        // Simpan informasi pengguna ke dalam request
+        req.user = decoded;
+        next();
+    } catch (err) {
+        console.error("Error in isAdminOrSuperAdmin middleware:", err);
+
+        // Tangani error JWT
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ status: "FAILED", message: "Token telah kedaluwarsa" });
+        } else if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid" });
+        }
+
+        // Tangani error lainnya
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan pada server" });
+    }
+};
+
 // Login
 router.post('/login', validateGlobalToken, async (req, res) => {
     const { username, password } = req.body;
@@ -34,7 +75,7 @@ router.post('/login', validateGlobalToken, async (req, res) => {
 // Add this to your authRoutes.js file
 
 // Get detailed user information using token only
-router.post('/detailUser', validateGlobalToken, async (req, res) => {
+router.post('/detailUser', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { token } = req.body;
     if (!token) {
         return res.status(400).json({ status: "FAILED", message: "Token harus diisi" });
@@ -67,7 +108,7 @@ router.post('/detailUser', validateGlobalToken, async (req, res) => {
 });
 
 // Register
-router.post('/register', validateGlobalToken, async (req, res) => {
+router.post('/register', validateGlobalToken, isSuperAdmin,  async (req, res) => {
     const { username, password, full_name, email, role } = req.body;
     if (!username || !password || !full_name || !email || !role) {
         return res.status(400).json({ status: "FAILED", message: "Semua field harus diisi" });
@@ -82,7 +123,7 @@ router.post('/register', validateGlobalToken, async (req, res) => {
 });
 
 // Profile berdasarkan token Redis
-router.get('/profile', validateGlobalToken, async (req, res) => {
+router.get('/profile', validateGlobalToken,  async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ status: "FAILED", message: "Token diperlukan" });
 
@@ -133,16 +174,42 @@ router.post('/getProfile', validateGlobalToken, async (req, res) => {
 });
 
 // Logout
+// Logout
+// Logout
 router.post('/logout', validateGlobalToken, async (req, res) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ status: "FAILED", message: "Token diperlukan" });
+    // Get token from request body
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(401).json({ status: "FAILED", message: "Token diperlukan" });
+    }
 
     try {
+        // Verify token using JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        await redisClient.del(`token:${decoded.username}`);
-        return res.status(200).json({ status: "SUCCESS", message: "Logout berhasil" });
+
+        // Log decoded information for debugging
+        console.log("Decoded token:", decoded);
+
+        // Delete token from Redis
+        const result = await redisClient.del(`token:${decoded.username}`);
+        if (result === 0) {
+            console.warn("Token tidak ditemukan di Redis, mungkin sudah dihapus sebelumnya.");
+        } else {
+            console.log("Token berhasil dihapus dari Redis.");
+        }
+
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: "Logout berhasil"
+        });
     } catch (err) {
-        return res.status(401).json({ status: "FAILED", message: "Token tidak valid" });
+        console.error("Error verifying or deleting token:", err);
+        return res.status(401).json({
+            status: "FAILED",
+            message: "Token tidak valid",
+            error: err.message
+        });
     }
 });
 

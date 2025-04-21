@@ -6,6 +6,8 @@ const appStatusRoutes = require('./src/routes/appStatusRoutes');
 const candidateRoutes = require('./src/routes/candidateRoutes');
 const studyMaterialRoutes = require('./src/routes/studyMaterialRoutes');
 const examRoutes = require('./src/routes/examRoutes'); 
+const statusRoutes = require('./src/routes/statusRoutes');
+const positionRoutes = require('./src/routes/positionRoutes');
 
 
 app.use(express.json());
@@ -15,6 +17,8 @@ app.use('/api/admin/data_admin', adminRoutes);
 app.use('/api/admin/data_candidates', candidateRoutes);
 app.use('/api/admin/study_material', studyMaterialRoutes);
 app.use('/api/admin/exam', examRoutes);
+app.use('/api/admin/status', statusRoutes);
+app.use('/api/admin/position', positionRoutes);
 
 
 const PORT = process.env.PORT || 3000;

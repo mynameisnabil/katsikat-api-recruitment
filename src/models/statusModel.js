@@ -2,23 +2,12 @@ const pool = require('../config/db');
 
 const getAllStatuses = async () => {
     const [rows] = await pool.query('SELECT * FROM status');
-    return rows.map(row => {
-        const { id, ...rest } = row;
-        return {
-            ...rest,
-            id_status: id
-        };
-    });
+    return rows;
 };
 
 const getStatusById = async (id) => {
     const [rows] = await pool.query('SELECT * FROM status WHERE id = ?', [id]);
-    if (rows.length === 0) return null;
-    const { id: rowId, ...rest } = rows[0];
-    return {
-        ...rest,
-        id_status: rowId
-    };
+    return rows[0] || null;
 };
 
 const createStatus = async (status_name) => {
@@ -26,10 +15,7 @@ const createStatus = async (status_name) => {
         INSERT INTO status (status_name, created_at, updated_at)
         VALUES (?, NOW(), NOW())
     `, [status_name]);
-    return {
-        id_status: result.insertId,
-        status_name
-    };
+    return { id: result.insertId, status_name };
 };
 
 const updateStatus = async (id, status_name) => {
