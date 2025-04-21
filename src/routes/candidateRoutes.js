@@ -11,26 +11,42 @@ require('dotenv').config();
 
 // Middleware to verify if user is admin or superadmin via token in body
 const isAdminOrSuperAdmin = async (req, res, next) => {
-    const token = req.body.token;
-    if (!token) return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
+    // Ambil token dari header Authorization
+    const token = req.body.token
+    if (!token) {
+        return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
+    }
 
     try {
+        // Verifikasi token menggunakan JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== 'admin' && decoded.role !== 'superadmin') {
+
+        // Periksa apakah role adalah admin atau superadmin
+        if (decoded.role !== 'superadmin' && decoded.role !== 'admin') {
             return res.status(403).json({ status: "FAILED", message: "Hanya admin dan superadmin yang diperbolehkan" });
         }
-        
-        // Verify token exists in Redis
+
+        // Periksa token di Redis
         const storedToken = await redisClient.get(`token:${decoded.username}`);
         if (!storedToken || storedToken !== token) {
             return res.status(401).json({ status: "FAILED", message: "Token tidak valid atau kadaluarsa" });
         }
-        
+
+        // Simpan informasi pengguna ke dalam request
         req.user = decoded;
         next();
     } catch (err) {
-        console.error(err);
-        return res.status(401).json({ status: "FAILED", message: "Token JWT tidak valid" });
+        console.error("Error in isAdminOrSuperAdmin middleware:", err);
+
+        // Tangani error JWT
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ status: "FAILED", message: "Token telah kedaluwarsa" });
+        } else if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid" });
+        }
+
+        // Tangani error lainnya
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan pada server" });
     }
 };
 

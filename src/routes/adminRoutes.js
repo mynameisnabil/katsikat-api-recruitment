@@ -2,22 +2,49 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const adminModel = require('../models/adminModel');
+const redis = require('ioredis');
+const redisClient = new redis();
 const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
 // Cek apakah JWT (dari body) memiliki role superadmin
-const isSuperAdmin = (req, res, next) => {
-    const token = req.body.token;
-    if (!token) return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
+const isSuperAdmin = async (req, res, next) => {
+    // Ambil token dari header Authorization
+    const token = req.body.token
+    if (!token) {
+        return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
+    }
 
     try {
+        // Verifikasi token menggunakan JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Periksa apakah role adalah admin atau superadmin
         if (decoded.role !== 'superadmin') {
-            return res.status(403).json({ status: "FAILED", message: "Hanya superadmin yang diperbolehkan" });
+            return res.status(403).json({ status: "FAILED", message: "Hanya admin dan superadmin yang diperbolehkan" });
         }
+
+        // Periksa token di Redis
+        const storedToken = await redisClient.get(`token:${decoded.username}`);
+        if (!storedToken || storedToken !== token) {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid atau kadaluarsa" });
+        }
+
+        // Simpan informasi pengguna ke dalam request
+        req.user = decoded;
         next();
     } catch (err) {
-        return res.status(401).json({ status: "FAILED", message: "Token JWT tidak valid" });
+        console.error("Error in isAdminOrSuperAdmin middleware:", err);
+
+        // Tangani error JWT
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ status: "FAILED", message: "Token telah kedaluwarsa" });
+        } else if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid" });
+        }
+
+        // Tangani error lainnya
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan pada server" });
     }
 };
 
