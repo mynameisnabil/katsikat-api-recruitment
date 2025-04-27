@@ -4,18 +4,34 @@ const bcrypt = require('bcryptjs');
 module.exports = {
     register: async (userData) => {
         try {
-            
+            // Cek apakah username atau email sudah ada
+            const [checkResult] = await pool.query(
+                'SELECT id FROM users WHERE username = ? OR email = ?',
+                [userData.username, userData.email]
+            );
+    
+            if (checkResult.length > 0) {
+                // Username atau Email sudah ada
+                return { exists: true };
+            }
+    
+            // Hash password
             const hashedPassword = await bcrypt.hash(userData.password, 10);
-            const [result] = await pool.query(
+    
+            // Insert user baru
+            const [insertResult] = await pool.query(
                 'INSERT INTO users (username, password, full_name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
                 [userData.username, hashedPassword, userData.full_name, userData.email, userData.role]
             );
-            return result;
+    
+            return { exists: false, insertId: insertResult.insertId };
+            
         } catch (error) {
             console.error(error);
             return null;
         }
     },
+    
 
     checkLogin: async (username, password) => {
         try {
@@ -36,10 +52,9 @@ module.exports = {
             return null;
         }
     },
-
     getUserByUsername: async (username) => {
         try {
-            const [rows] = await pool.query('SELECT username, full_name, email, role, created_at FROM users WHERE username = ?', [username]);
+            const [rows] = await pool.query('SELECT id as user_id, username, full_name, email, role, created_at FROM users WHERE username = ?', [username]);
             return rows.length > 0 ? rows[0] : null;
         } catch (error) {
             console.error(error);
@@ -55,5 +70,16 @@ module.exports = {
             console.error(error);
             return [];
         }
+    },
+
+    deleteUser: async (userId) => {
+        try {
+            const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+            return result.affectedRows > 0; // Mengembalikan true jika ada baris yang dihapus
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
     }
+    
 };

@@ -48,6 +48,46 @@ const isSuperAdmin = async (req, res, next) => {
     }
 };
 
+const isAdminOrSuperAdmin = async (req, res, next) => {
+    // Ambil token dari header Authorization
+    const token = req.body.token
+    if (!token) {
+        return res.status(401).json({ status: "FAILED", message: "Token JWT diperlukan" });
+    }
+
+    try {
+        // Verifikasi token menggunakan JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Periksa apakah role adalah admin atau superadmin
+        if (decoded.role !== 'superadmin' && decoded.role !== 'admin') {
+            return res.status(403).json({ status: "FAILED", message: "Hanya admin dan superadmin yang diperbolehkan" });
+        }
+
+        // Periksa token di Redis
+        const storedToken = await redisClient.get(`token:${decoded.username}`);
+        if (!storedToken || storedToken !== token) {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid atau kadaluarsa" });
+        }
+
+        // Simpan informasi pengguna ke dalam request
+        req.user = decoded;
+        next();
+    } catch (err) {
+        console.error("Error in isAdminOrSuperAdmin middleware:", err);
+
+        // Tangani error JWT
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ status: "FAILED", message: "Token telah kedaluwarsa" });
+        } else if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ status: "FAILED", message: "Token tidak valid" });
+        }
+
+        // Tangani error lainnya
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan pada server" });
+    }
+};
+
 // Login
 router.post('/login', validateGlobalToken, async (req, res) => {
     const { username, password } = req.body;
@@ -75,7 +115,7 @@ router.post('/login', validateGlobalToken, async (req, res) => {
 // Add this to your authRoutes.js file
 
 // Get detailed user information using token only
-router.post('/detailUser', validateGlobalToken, isSuperAdmin, async (req, res) => {
+router.post('/detailUser', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { token } = req.body;
     if (!token) {
         return res.status(400).json({ status: "FAILED", message: "Token harus diisi" });
@@ -107,20 +147,52 @@ router.post('/detailUser', validateGlobalToken, isSuperAdmin, async (req, res) =
     }
 });
 
-// Register
-router.post('/register', validateGlobalToken, isSuperAdmin,  async (req, res) => {
+
+//Register
+router.post('/register', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { username, password, full_name, email, role } = req.body;
     if (!username || !password || !full_name || !email || !role) {
         return res.status(400).json({ status: "FAILED", message: "Semua field harus diisi" });
     }
 
     const result = await userModel.register({ username, password, full_name, email, role });
-    if (result) {
-        return res.status(201).json({ status: "SUCCESS", message: "User berhasil didaftarkan" });
-    } else {
+
+    if (!result) {
         return res.status(500).json({ status: "FAILED", message: "Gagal mendaftarkan user" });
     }
+
+    if (result.exists) {
+        return res.status(409).json({ status: "FAILED", message: "Username atau Email sudah terdaftar" });
+    }
+
+    return res.status(201).json({ 
+        status: "SUCCESS", 
+        message: "User berhasil didaftarkan",
+        user_id: result.insertId
+    });
 });
+
+// Delete 
+router.post('/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
+    const { user_id } = req.body;
+    if (!user_id) {
+        return res.status(400).json({ status: "FAILED", message: "User ID harus diisi" });
+    }
+
+    try {
+        const result = await userModel.deleteUser(user_id);
+        if (!result) {
+            return res.status(404).json({ status: "FAILED", message: "User tidak ditemukan" });
+        }
+
+        return res.status(200).json({ status: "SUCCESS", message: "User berhasil dihapus" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat menghapus user" });
+    }
+});
+
+
 
 // Profile berdasarkan token Redis
 router.get('/profile', validateGlobalToken,  async (req, res) => {
