@@ -88,20 +88,21 @@ const addCandidateToStudyMaterial = async (studyId, candidateId) => {
     
     if (existingRows.length > 0) {
         // Update access date if already exists
-        const [result] = await pool.query(
+        await pool.query(
             'UPDATE study_materials_candidates SET access_date = NOW() WHERE study_id = ? AND candidate_id = ?',
             [studyId, candidateId]
         );
-        return { updated: true, id: existingRows[0].id };
+        return { updated: true }; // ✅ hanya return updated
     } else {
         // Create new assignment
-        const [result] = await pool.query(
+        await pool.query(
             'INSERT INTO study_materials_candidates (study_id, candidate_id, access_date) VALUES (?, ?, NOW())',
             [studyId, candidateId]
         );
-        return { created: true, id: result.insertId };
+        return { created: true }; // ✅ hanya return created
     }
 };
+
 
 module.exports = {
     addStudyMaterial,

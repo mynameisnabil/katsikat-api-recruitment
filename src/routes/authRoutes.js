@@ -165,12 +165,15 @@ router.post('/register', validateGlobalToken, isSuperAdmin, async (req, res) => 
         return res.status(409).json({ status: "FAILED", message: "Username atau Email sudah terdaftar" });
     }
 
-    return res.status(201).json({ 
+    return res.status(200).json({ 
         status: "SUCCESS", 
         message: "User berhasil didaftarkan",
-        user_id: result.insertId
+        user_id: result.insertId,
+        full_name: full_name,
+        email: email
     });
 });
+
 
 // Delete 
 router.post('/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {

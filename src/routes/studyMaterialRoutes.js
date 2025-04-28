@@ -221,6 +221,7 @@ router.post('/add_candidate_to_study', validateGlobalToken,  isAdminOrSuperAdmin
             message: result.created 
                 ? "Kandidat berhasil ditambahkan ke materi pembelajaran" 
                 : "Akses kandidat ke materi pembelajaran berhasil diperbarui",
+                candidate_id : candidate_id,
             result
         });
     } catch (error) {
