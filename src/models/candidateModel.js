@@ -154,20 +154,22 @@ const assignCandidateToPosition = async (candidateId, positionId, statusId) => {
     
     if (existingRows.length > 0) {
         // Update existing assignment
-        const [result] = await pool.query(
+        await pool.query(
             'UPDATE candidate_positions SET status_id = ? WHERE candidate_id = ? AND position_id = ?',
             [statusId, candidateId, positionId]
         );
-        return { updated: true, id: existingRows[0].id };
+        return { updated: true }; // ✅ hanya return updated
     } else {
         // Create new assignment
-        const [result] = await pool.query(
+        await pool.query(
             'INSERT INTO candidate_positions (candidate_id, position_id, status_id, date_of_application) VALUES (?, ?, ?, NOW())',
             [candidateId, positionId, statusId]
         );
-        return { created: true, id: result.insertId };
+        return { created: true }; // ✅ hanya return created
     }
 };
+
+
 
 module.exports = {
     addCandidate,

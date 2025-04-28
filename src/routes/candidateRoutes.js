@@ -50,7 +50,6 @@ const isAdminOrSuperAdmin = async (req, res, next) => {
     }
 };
 
-// Add a new candidate
 router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { user_id, age, birthdate, gender, email, phone_number, full_name } = req.body;
     
@@ -66,16 +65,19 @@ router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) =
             user_id, age, birthdate, gender, email, phone_number, full_name
         });
         
-        return res.status(201).json({ 
+        return res.status(200).json({ 
             status: "SUCCESS", 
             message: "Kandidat berhasil ditambahkan", 
-            candidate: newCandidate 
+            candidate_id: newCandidate.id,
+            full_name: full_name
         });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat menambahkan kandidat" });
     }
 });
+
+
 
 // POST /api/list → Ambil daftar kandidat
 router.post('/list', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
@@ -297,6 +299,7 @@ router.post('/assign', validateGlobalToken, isAdminOrSuperAdmin, async (req, res
             message: result.created 
                 ? "Kandidat berhasil diassign ke posisi baru" 
                 : "Kandidat berhasil diupdate untuk posisi",
+            candidate_id: candidate_id, // <-- Tambahkan di sini
             result
         });
     } catch (error) {
@@ -307,5 +310,6 @@ router.post('/assign', validateGlobalToken, isAdminOrSuperAdmin, async (req, res
         });
     }
 });
+
 
 module.exports = router;
