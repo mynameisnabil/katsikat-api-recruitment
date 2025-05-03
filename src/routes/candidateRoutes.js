@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const redis = require('ioredis');
 const redisClient = new redis();
 const candidateModel = require('../models/candidateModel');
+const userModel = require('../models/userModel');
 const statusModel = require('../models/statusModel');
 const positionModel = require('../models/positionModel');
 const { validateGlobalToken } = require('../middleware/authMiddleware');
@@ -95,6 +96,16 @@ router.post('/list', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) 
             status: "FAILED", 
             message: "Terjadi kesalahan saat mengambil daftar kandidat" 
         });
+    }
+});
+
+router.post('/list_user', validateGlobalToken, async (req, res) => {
+    try {
+        const users = await userModel.getAllRoleCandidate();
+        return res.status(200).json({ status: "SUCCESS", users });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat mengambil daftar user" });
     }
 });
 
@@ -312,4 +323,4 @@ router.post('/assign', validateGlobalToken, isAdminOrSuperAdmin, async (req, res
 });
 
 
-module.exports = router;
+module.exports = router; 

@@ -72,6 +72,19 @@ module.exports = {
         }
     },
 
+    getAllRoleCandidate: async () => {
+        try {
+            const [rows] = await pool.query('SELECT id as user_id, username, full_name, email, role, created_at FROM users WHERE role = ?', ['candidate']);
+            return rows;
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
+    },
+
+
+
+
     deleteUser: async (userId) => {
         try {
             const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
