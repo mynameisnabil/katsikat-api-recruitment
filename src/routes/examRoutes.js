@@ -203,6 +203,42 @@ router.post('/delete', validateGlobalToken, isAdminOrSuperAdmin, async (req, res
     }
 });
 
+// src/routes/examRoutes.js
+
+router.post('/assign_candidate', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    const { exam_id, candidate_id } = req.body;
+
+    if (!exam_id || !candidate_id) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "exam_id dan candidate_id diperlukan"
+        });
+    }
+
+    try {
+        const result = await examModel.assignCandidateToExam(exam_id, candidate_id);
+
+        if (!result.success) {
+            return res.status(400).json({
+                status: "FAILED",
+                message: result.message
+            });
+        }
+
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: result.message
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            status: "FAILED",
+            message: "Terjadi kesalahan saat assign kandidat ke exam"
+        });
+    }
+});
+
+
 // POST /api/add_question → Tambah pertanyaan ke exam
 router.post('/add_question', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { exam_id, question, option_A, option_B, option_C, option_D, answer_key } = req.body;

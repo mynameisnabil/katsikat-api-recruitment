@@ -89,27 +89,19 @@ const updateExam = async (examId, examData) => {
 
 // Delete exam and related questions
 const deleteExam = async (examId) => {
-    // Start a transaction
     const connection = await pool.getConnection();
     await connection.beginTransaction();
-    
+
     try {
-        // Delete exam reports first
+        // Hapus exam_reports dulu (FK ke exam_id)
         await connection.query('DELETE FROM exam_reports WHERE exam_id = ?', [examId]);
-        
-        // Delete candidate_exam_reports for this exam
-        await connection.query(`
-            DELETE cer FROM candidate_exam_reports cer
-            JOIN exam_reports er ON cer.exam_report_id = er.id
-            WHERE er.exam_id = ?
-        `, [examId]);
-        
-        // Delete questions for this exam
+
+        // Hapus questions
         await connection.query('DELETE FROM questions WHERE exam_id = ?', [examId]);
-        
-        // Finally delete the exam
+
+        // Terakhir, hapus exam
         const [result] = await connection.query('DELETE FROM exams WHERE id = ?', [examId]);
-        
+
         await connection.commit();
         return result.affectedRows > 0;
     } catch (error) {
@@ -119,6 +111,42 @@ const deleteExam = async (examId) => {
         connection.release();
     }
 };
+
+
+// src/models/examModel.js
+
+const assignCandidateToExam = async (examId, candidateId) => {
+    const connection = await pool.getConnection();
+
+    try {
+        // Cek apakah sudah ada data exam_report kandidat ini untuk exam yang sama
+        const [existing] = await connection.query(
+            'SELECT id FROM exam_reports WHERE exam_id = ? AND candidate_id = ?',
+            [examId, candidateId]
+        );
+
+        if (existing.length > 0) {
+            return { success: false, message: "Candidate sudah terdaftar pada exam ini" };
+        }
+
+        // Insert data baru dengan created_at dan updated_at
+        await connection.query(
+            `INSERT INTO exam_reports 
+            (exam_id, candidate_id, score, report_date, created_at, updated_at) 
+            VALUES (?, ?, ?, CURRENT_DATE, NOW(), NOW())`,
+            [examId, candidateId, 0]
+        );
+
+        return { success: true, message: "Candidate berhasil ditambahkan ke exam" };
+    } catch (error) {
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
+
+
 
 // Add a question to an exam
 const addQuestionToExam = async (questionData) => {
@@ -254,5 +282,6 @@ module.exports = {
     deleteQuestion,
     getAllCategories,
     addCategory,
-    addMultipleQuestionsToExam
+    addMultipleQuestionsToExam,
+    assignCandidateToExam
 };

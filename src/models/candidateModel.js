@@ -33,7 +33,7 @@ const getAllCandidates = async () => {
         const { id, ...rest } = candidate;
         return {
             ...rest,
-            candidate_id: candidate.candidate_id || '-',
+            candidate_id: candidate.candidate_id || '-', 
             status_name: candidate.status_name || '-',
             position_name: candidate.position_name || '-'
         };
