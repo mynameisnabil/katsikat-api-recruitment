@@ -9,6 +9,7 @@ const examRoutes = require('./src/routes/examRoutes');
 const statusRoutes = require('./src/routes/statusRoutes');
 const positionRoutes = require('./src/routes/positionRoutes');
 const apicandidateAuthRoutes = require('./src/routes/apicandidateAuthRoutes');
+const apicandidateStudyMatRoutes = require('./src/routes/apicandidateStudyMatRoutes');
 
 
 app.use(express.json());
@@ -21,6 +22,7 @@ app.use('/api/admin/exam', examRoutes);
 app.use('/api/admin/status', statusRoutes);
 app.use('/api/admin/position', positionRoutes);
 app.use('/api/candidate/auth', apicandidateAuthRoutes);
+app.use('/api/candidate/study_material', apicandidateStudyMatRoutes);
 
 
 const PORT = process.env.PORT || 3000;
