@@ -124,6 +124,7 @@ router.post('/detailUser', validateGlobalToken, isAdminOrSuperAdmin, async (req,
     try {
         // Verify the token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("Decoded token:", decoded);
         
         // Check if token exists in Redis
         const storedToken = await redisClient.get(`token:${decoded.username}`);
