@@ -4,25 +4,43 @@ const bcrypt = require('bcryptjs');
 
 
 module.exports = {
-     checkLoginCandidate: async (username, password) => {
-        try {
-            const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-            if (rows.length === 0) return null;
+  checkLoginCandidate: async (username, password) => {
+    try {
+        // Get user data from users table
+        const [userRows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
+        if (userRows.length === 0) return null;
 
-            const user = rows[0];
+        const user = userRows[0];
 
-            // Cek apakah password tersimpan dalam plaintext atau bcrypt hash
-            if (user.password.length === 60) { // Panjang bcrypt hash adalah 60 karakter
-                const isMatch = await bcrypt.compare(password, user.password);
-                return isMatch ? user : null;
-            } else {
-                return user.password === password ? user : null;
-            }
-        } catch (error) {
-            console.error(error);
-            return null;
+        // Validate password
+        let isValidPassword = false;
+        
+        // Check if password is stored as plaintext or bcrypt hash
+        if (user.password.length === 60) { // Length of bcrypt hash is 60 characters
+            isValidPassword = await bcrypt.compare(password, user.password);
+        } else {
+            isValidPassword = user.password === password;
         }
-    },
+        
+        // If password is invalid, return null
+        if (!isValidPassword) return null;
+        
+        // Get candidate_id from candidates table using user_id
+        const [candidateRows] = await pool.query('SELECT id as candidate_id FROM candidates WHERE user_id = ?', [user.id]);
+        
+        // Add candidate_id to the user object if found
+        if (candidateRows.length > 0) {
+            user.candidate_id = candidateRows[0].candidate_id;
+        } else {
+            user.candidate_id = null; // Set to null if no candidate record found
+        }
+        
+        return user;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+},
 
 // Get candidate details by username
 getCandidateByUsername : async (username) => {

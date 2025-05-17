@@ -78,30 +78,71 @@ const deleteStudyMaterial = async (materialId) => {
     return result.affectedRows > 0;
 };
 
-// Add candidate to study material
-const addCandidateToStudyMaterial = async (studyId, candidateId) => {
-    // Check if assignment already exists
-    const [existingRows] = await pool.query(
-        'SELECT * FROM study_materials_candidates WHERE study_id = ? AND candidate_id = ?',
-        [studyId, candidateId]
-    );
+// // Add candidate to study material
+// const addCandidateToStudyMaterial = async (studyId, candidateId) => {
+//     // Check if assignment already exists
+//     const [existingRows] = await pool.query(
+//         'SELECT * FROM study_materials_candidates WHERE study_id = ? AND candidate_id = ?',
+//         [studyId, candidateId]
+//     );
     
-    if (existingRows.length > 0) {
-        // Update access date if already exists
-        await pool.query(
-            'UPDATE study_materials_candidates SET access_date = NOW() WHERE study_id = ? AND candidate_id = ?',
-            [studyId, candidateId]
-        );
-        return { updated: true }; // ✅ hanya return updated
-    } else {
-        // Create new assignment
-        await pool.query(
-            'INSERT INTO study_materials_candidates (study_id, candidate_id, access_date) VALUES (?, ?, NOW())',
-            [studyId, candidateId]
-        );
-        return { created: true }; // ✅ hanya return created
+//     if (existingRows.length > 0) {
+//         // Update access date if already exists
+//         await pool.query(
+//             'UPDATE study_materials_candidates SET access_date = NOW() WHERE study_id = ? AND candidate_id = ?',
+//             [studyId, candidateId]
+//         );
+//         return { updated: true }; // ✅ hanya return updated
+//     } else {
+//         // Create new assignment
+//         await pool.query(
+//             'INSERT INTO study_materials_candidates (study_id, candidate_id, access_date) VALUES (?, ?, NOW())',
+//             [studyId, candidateId]
+//         );
+//         return { created: true }; // ✅ hanya return created
+//     }
+// };
+
+// Model: Modified to handle multiple study IDs
+const addCandidateToStudyMaterial = async (studyIds, candidateId) => {
+    // Convert to array if single ID is provided
+    if (!Array.isArray(studyIds)) {
+        studyIds = [studyIds];
     }
+    
+    const results = {
+        created: [],
+        updated: []
+    };
+    
+    // Process each study ID
+    for (const studyId of studyIds) {
+        // Check if assignment already exists
+        const [existingRows] = await pool.query(
+            'SELECT * FROM study_materials_candidates WHERE study_id = ? AND candidate_id = ?',
+            [studyId, candidateId]
+        );
+        
+        if (existingRows.length > 0) {
+            // Update access date if already exists
+            await pool.query(
+                'UPDATE study_materials_candidates SET access_date = NOW() WHERE study_id = ? AND candidate_id = ?',
+                [studyId, candidateId]
+            );
+            results.updated.push(studyId);
+        } else {
+            // Create new assignment
+            await pool.query(
+                'INSERT INTO study_materials_candidates (study_id, candidate_id, access_date) VALUES (?, ?, NOW())',
+                [studyId, candidateId]
+            );
+            results.created.push(studyId);
+        }
+    }
+    
+    return results;
 };
+
 
 
 module.exports = {

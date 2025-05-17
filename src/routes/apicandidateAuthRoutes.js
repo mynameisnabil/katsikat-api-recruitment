@@ -11,8 +11,6 @@ require('dotenv').config();
 
 
 
-
-
 router.post('/login', validateGlobalToken, async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -32,6 +30,7 @@ router.post('/login', validateGlobalToken, async (req, res) => {
         message: "Login berhasil", 
         role: user.role, 
         user_id: user.id, // Adding user ID to the response
+        candidate_id: user.candidate_id, // Adding candidate ID to the respons
         token 
     });
 });

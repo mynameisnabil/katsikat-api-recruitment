@@ -203,10 +203,11 @@ router.post('/delete', isAdminOrSuperAdmin, async (req, res) => {
 });
 
 // POST /api/add_candidate_to_study → Tambah candidate dengan id_candidate dan study id
-router.post('/add_candidate_to_study', validateGlobalToken,  isAdminOrSuperAdmin, async (req, res) => {
-    const { study_id, candidate_id } = req.body;
+// Route: Modified to handle multiple study IDs
+router.post('/add_candidate_to_study', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    const { study_ids, candidate_id } = req.body;
     
-    if (!study_id || !candidate_id) {
+    if (!study_ids || !candidate_id) {
         return res.status(400).json({
             status: "FAILED",
             message: "ID materi pembelajaran dan ID kandidat diperlukan"
@@ -214,15 +215,26 @@ router.post('/add_candidate_to_study', validateGlobalToken,  isAdminOrSuperAdmin
     }
     
     try {
-        const result = await studyMaterialModel.addCandidateToStudyMaterial(study_id, candidate_id);
+        const result = await studyMaterialModel.addCandidateToStudyMaterial(study_ids, candidate_id);
+        
+        // Create appropriate message based on results
+        let message = "";
+        if (result.created.length > 0 && result.updated.length > 0) {
+            message = `Kandidat berhasil ditambahkan ke ${result.created.length} materi pembelajaran baru dan akses diperbarui untuk ${result.updated.length} materi pembelajaran`;
+        } else if (result.created.length > 0) {
+            message = `Kandidat berhasil ditambahkan ke ${result.created.length} materi pembelajaran`;
+        } else if (result.updated.length > 0) {
+            message = `Akses kandidat ke ${result.updated.length} materi pembelajaran berhasil diperbarui`;
+        }
         
         return res.status(200).json({
             status: "SUCCESS",
-            message: result.created 
-                ? "Kandidat berhasil ditambahkan ke materi pembelajaran" 
-                : "Akses kandidat ke materi pembelajaran berhasil diperbarui",
-                candidate_id : candidate_id,
-            result
+            message: message,
+            candidate_id: candidate_id,
+            result: {
+                created_study_ids: result.created,
+                updated_study_ids: result.updated
+            }
         });
     } catch (error) {
         console.error(error);
@@ -232,5 +244,6 @@ router.post('/add_candidate_to_study', validateGlobalToken,  isAdminOrSuperAdmin
         });
     }
 });
+
 
 module.exports = router;
