@@ -119,12 +119,29 @@ const assignCandidateToExam = async (examId, candidateId) => {
     const connection = await pool.getConnection();
 
     try {
+        // Cek apakah examId ada
+        const [exam] = await connection.query(
+            'SELECT id FROM exams WHERE id = ?',
+            [examId]
+        );
+        if (exam.length === 0) {
+            return { success: false, message: "Exam tidak ditemukan" };
+        }
+
+        // Cek apakah candidateId ada
+        const [candidate] = await connection.query(
+            'SELECT id FROM candidates WHERE id = ?',
+            [candidateId]
+        );
+        if (candidate.length === 0) {
+            return { success: false, message: "Candidate tidak ditemukan" };
+        }
+
         // Cek apakah sudah ada data exam_report kandidat ini untuk exam yang sama
         const [existing] = await connection.query(
             'SELECT id FROM exam_reports WHERE exam_id = ? AND candidate_id = ?',
             [examId, candidateId]
         );
-
         if (existing.length > 0) {
             return { success: false, message: "Candidate sudah terdaftar pada exam ini" };
         }
@@ -144,6 +161,7 @@ const assignCandidateToExam = async (examId, candidateId) => {
         connection.release();
     }
 };
+
 
 
 
