@@ -10,6 +10,9 @@ const statusRoutes = require('./src/routes/statusRoutes');
 const positionRoutes = require('./src/routes/positionRoutes');
 const apicandidateAuthRoutes = require('./src/routes/apicandidateAuthRoutes');
 const apicandidateStudyMatRoutes = require('./src/routes/apicandidateStudyMatRoutes');
+const apicandidateExamRoutes = require('./src/routes/apicandidateExamRoutes');
+const apicandidateInterviewRoutes = require('./src/routes/candidateInterviewRoutes');
+const adminInterviewRoutes = require('./src/routes/adminInterviewRoutes');
 
 
 app.use(express.json());
@@ -21,8 +24,12 @@ app.use('/api/admin/study_material', studyMaterialRoutes);
 app.use('/api/admin/exam', examRoutes);
 app.use('/api/admin/status', statusRoutes);
 app.use('/api/admin/position', positionRoutes);
+app.use('/api/admin/interview', adminInterviewRoutes);
 app.use('/api/candidate/auth', apicandidateAuthRoutes);
 app.use('/api/candidate/study_material', apicandidateStudyMatRoutes);
+app.use('/api/candidate/exam', apicandidateExamRoutes);
+app.use('/api/candidate/interview', apicandidateInterviewRoutes);
+
 
 
 const PORT = process.env.PORT || 3000;
