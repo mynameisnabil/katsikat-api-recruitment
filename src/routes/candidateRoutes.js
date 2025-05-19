@@ -51,6 +51,31 @@ const isAdminOrSuperAdmin = async (req, res, next) => {
     }
 };
 
+router.post('/register_candidate', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    const { username, password, full_name, email, role } = req.body;
+    if (!username || !password || !full_name || !email || !role) {
+        return res.status(400).json({ status: "FAILED", message: "Semua field harus diisi" });
+    }
+
+    const result = await userModel.register({ username, password, full_name, email, role });
+
+    if (!result) {
+        return res.status(500).json({ status: "FAILED", message: "Gagal mendaftarkan user" });
+    }
+
+    if (result.exists) {
+        return res.status(409).json({ status: "FAILED", message: "Username atau Email sudah terdaftar" });
+    }
+
+    return res.status(200).json({ 
+        status: "SUCCESS", 
+        message: "User berhasil didaftarkan",
+        user_id: result.insertId,
+        full_name: full_name,
+        email: email
+    });
+});
+
 router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
     const { user_id, age, birthdate, gender, email, phone_number, full_name } = req.body;
     

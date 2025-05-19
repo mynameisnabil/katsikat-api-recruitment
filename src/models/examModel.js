@@ -51,7 +51,7 @@ const getExamById = async (examId) => {
     
     // Get questions for this exam
     const [questionsRows] = await pool.query(`
-        SELECT id, exam_id, question_text, option_A, option_B, option_C, option_D, answer_key, created_at, updated_at
+        SELECT id as question_id, exam_id, question_text, option_A, option_B, option_C, option_D, answer_key, created_at, updated_at
         FROM questions
         WHERE exam_id = ?
         ORDER BY id ASC
@@ -59,6 +59,7 @@ const getExamById = async (examId) => {
     
     exam.questions = questionsRows.length > 0 ? questionsRows : [];
     exam.question_count = questionsRows.length;
+    exam.total_question = questionsRows.length;
     
     // Get reports for this exam
     const [reportsRows] = await pool.query(`
