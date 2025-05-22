@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const redis = require('ioredis');
 const pool = require('../config/db');
 const redisClient = new redis();
-const candidateInterviewModel = require('../models/candidateModel');
+const candidateInterviewModel = require('../models/interviewModel');
 const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
@@ -19,7 +19,7 @@ router.post('/my_interviews', validateGlobalToken, async (req, res) => {
     }
     
     try {
-        const schedules = await interviewScheduleModel.getInterviewSchedulesForCandidate(candidate_id);
+        const schedules = await candidateInterviewModel.getInterviewSchedulesForCandidate(candidate_id);
         
         return res.status(200).json({
             status: "SUCCESS",
@@ -39,7 +39,7 @@ router.post('/my_interviews', validateGlobalToken, async (req, res) => {
     }
 });
 
-// Candidate route for viewing specific interview schedule detail
+// Get specific interview schedule detail for candidate
 router.post('/interview_detail', validateGlobalToken, async (req, res) => {
     const { candidate_id, schedule_id } = req.body;
     
@@ -51,7 +51,7 @@ router.post('/interview_detail', validateGlobalToken, async (req, res) => {
     }
     
     try {
-        const scheduleDetail = await interviewScheduleModel.getInterviewScheduleDetail(schedule_id, candidate_id);
+        const scheduleDetail = await candidateInterviewModel.getInterviewScheduleDetail(schedule_id, candidate_id);
         
         if (!scheduleDetail) {
             return res.status(404).json({
