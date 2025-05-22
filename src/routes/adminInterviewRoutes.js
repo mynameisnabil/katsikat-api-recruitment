@@ -7,7 +7,6 @@ const interviewScheduleModel = require('../models/interviewModel');
 const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
-// Middleware to verify if user is admin or superadmin via token in body
 const isAdminOrSuperAdmin = async (req, res, next) => {
     // Ambil token dari header Authorization
     const token = req.body.token
@@ -48,14 +47,33 @@ const isAdminOrSuperAdmin = async (req, res, next) => {
     }
 };
 
+
+// Add or update interview schedule
 router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
-    const { candidate_id, candidate_position_id, interview_date, interview_time, notes } = req.body;
+    const { candidate_id, candidate_position_id, interview_date, interview_time, notes, admin_ids, link } = req.body;
     
     // Validate required fields
-    if (!candidate_id || !candidate_position_id || !interview_date || !interview_time) {
+    if (!candidate_id || !candidate_position_id || !interview_date || !interview_time || !admin_ids) {
         return res.status(400).json({
             status: "FAILED",
-            message: "ID kandidat, ID posisi kandidat, tanggal interview, dan waktu interview diperlukan"
+            message: "ID kandidat, ID posisi kandidat, tanggal interview, waktu interview, dan admin ID diperlukan"
+        });
+    }
+    
+    // Validate admin_ids format
+    if (!Array.isArray(admin_ids) && typeof admin_ids !== 'number') {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Admin ID harus berupa array atau angka"
+        });
+    }
+    
+    // Convert to array and validate maximum 3 admins
+    let adminIdsArray = Array.isArray(admin_ids) ? admin_ids : [admin_ids];
+    if (adminIdsArray.length > 3) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Maksimal 3 admin yang dapat ditugaskan untuk satu interview"
         });
     }
     
@@ -83,7 +101,9 @@ router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) =
             candidate_position_id, 
             interview_date, 
             interview_time,
-            notes || ''
+            notes || '',
+            adminIdsArray,
+            link || null // <-- tambahkan link di sini
         );
         
         // Create appropriate message based on results
@@ -100,7 +120,11 @@ router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) =
                 candidate_position_id: candidate_position_id,
                 interview_date: interview_date,
                 interview_time: interview_time,
-                updated: result.updated
+                notes: notes || '',
+                link: link || null, // <-- tambahkan link di response
+                updated: result.updated,
+                assigned_admins: result.assigned_admins,
+                total_assigned_admins: result.assigned_admins.length
             }
         });
     } catch (error) {
@@ -108,6 +132,43 @@ router.post('/add', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) =
         return res.status(500).json({
             status: "FAILED",
             message: error.message || "Terjadi kesalahan saat menambahkan jadwal interview"
+        });
+    }
+});
+
+
+// Get interview schedules for admin
+router.post('/my_schedules', validateGlobalToken, isAdminOrSuperAdmin, async (req, res) => {
+    const { admin_id } = req.body;
+    
+    if (!admin_id) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "ID admin diperlukan"
+        });
+    }
+    
+    try {
+        const schedules = await interviewScheduleModel.getInterviewSchedulesForAdmin(admin_id);
+
+        // schedules sudah mengandung field link di setiap objek schedule
+        return res.status(200).json({
+            status: "SUCCESS",
+            message: "Berhasil mendapatkan jadwal interview admin",
+            data: {
+                admin_id: admin_id,
+                total_schedules: schedules.length,
+                schedules: schedules.map(sch => ({
+                    ...sch,
+                    link: sch.link || null // pastikan field link selalu ada
+                }))
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            status: "FAILED",
+            message: error.message || "Terjadi kesalahan saat mengambil jadwal interview admin"
         });
     }
 });

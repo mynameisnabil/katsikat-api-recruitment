@@ -124,6 +124,33 @@ const getCandidateById = async (candidateId) => {
         };
     }
     
+    // Get study materials for candidate
+    const [studyMaterialRows] = await pool.query(`
+        SELECT 
+            sm.id,
+            sm.title,
+            sm.description,
+            sm.file_url,
+            sm.thumbnail,
+            sm.created_at as material_created_at,
+            sm.updated_at as material_updated_at,
+            smc.access_date,
+            COALESCE(u.full_name, u.username, '-') as created_by_name
+        FROM study_materials_candidates smc
+        JOIN study_materials sm ON smc.study_id = sm.id
+        LEFT JOIN users u ON sm.created_by = u.id
+        WHERE smc.candidate_id = ?
+        ORDER BY smc.access_date DESC
+    `, [candidateId]);
+    
+    // Set default empty array if no study materials found
+    candidate.study_materials = studyMaterialRows.length > 0 ? studyMaterialRows : [{ 
+        title: '-', 
+        description: '-', 
+        access_date: '-',
+        created_by_name: '-'
+    }];
+    
     // Remove 'candidate_position_id' from the response
     const { candidate_position_id, ...rest } = candidate;
     return rest;
