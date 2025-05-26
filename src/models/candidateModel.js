@@ -150,7 +150,6 @@ const getCandidateById = async (candidateId) => {
         access_date: '-',
         created_by_name: '-'
     }];
-    
     // Remove 'candidate_position_id' from the response
     const { candidate_position_id, ...rest } = candidate;
     return rest;

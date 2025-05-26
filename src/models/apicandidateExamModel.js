@@ -1,4 +1,3 @@
-
 const pool = require('../config/db');
 
 module.exports = {
@@ -26,21 +25,24 @@ module.exports = {
                     c.category,
                     (SELECT COUNT(*) FROM questions WHERE exam_id = e.id) as question_count,
                     er.score,
-                    CASE 
-                        WHEN er.score > 0 THEN 1 
-                        ELSE 0 
-                    END as is_completed
+                    er.is_completed = 1 as is_completed
                 FROM exams e
                 JOIN exam_reports er ON e.id = er.exam_id AND er.candidate_id = ?
                 LEFT JOIN categories c ON e.category_id = c.id
                 ORDER BY e.created_at DESC
             `, [candidateId]);
             
+            // Convert is_completed integer to boolean for response
+            const examsWithBooleanStatus = examsRows.map(exam => ({
+                ...exam,
+                is_completed: exam.is_completed === 1
+            }));
+            
             return {
                 candidate_id: candidateId,
                 candidate_name: candidateRows[0].full_name,
                 total_exams: examsRows.length,
-                exams: examsRows
+                exams: examsWithBooleanStatus
             };
         } catch (error) {
             console.error('Error getting exams list for candidate:', error);
@@ -49,7 +51,7 @@ module.exports = {
     },
 
     // Get detailed information about a specific exam for a candidate
-    getExamDetailForCandidate: async (candidateId, examId) => {
+     getExamDetailForCandidate: async (candidateId, examId) => {
         try {
             // First check if the candidate exists
             const [candidateRows] = await pool.query(`
@@ -62,7 +64,7 @@ module.exports = {
             
             // First check if this exam is assigned to this candidate
             const [assignmentCheck] = await pool.query(`
-                SELECT id FROM exam_reports 
+                SELECT id, is_completed FROM exam_reports 
                 WHERE candidate_id = ? AND exam_id = ?
             `, [candidateId, examId]);
             
@@ -109,14 +111,21 @@ module.exports = {
                 SELECT 
                     id as report_id,
                     score,
-                    report_date
+                    report_date,
+                    is_completed
                 FROM exam_reports
                 WHERE candidate_id = ? AND exam_id = ?
                 ORDER BY report_date DESC
             `, [candidateId, examId]);
             
-            // Check if the exam has been completed (score > 0)
-            const isCompleted = attemptsRows.length > 0 && attemptsRows[0].score > 0;
+            // Check if the exam has been completed using is_completed column
+            const isCompleted = assignmentCheck[0].is_completed === 1;
+            
+            // Convert is_completed integer to boolean for response
+            const attemptsWithBooleanStatus = attemptsRows.map(attempt => ({
+                ...attempt,
+                is_completed: attempt.is_completed === 1
+            }));
             
             return {
                 candidate_id: candidateId,
@@ -126,7 +135,7 @@ module.exports = {
                 total_questions: questionsRows.length,
                 previous_attempts: {
                     count: attemptsRows.length,
-                    attempts: attemptsRows
+                    attempts: attemptsWithBooleanStatus
                 },
                 is_completed: isCompleted
             };
@@ -135,6 +144,7 @@ module.exports = {
             throw error;
         }
     },
+
 
     // Submit exam answers for a candidate
     submitExamAnswers: async (candidateId, examId, answers) => {
@@ -164,13 +174,19 @@ module.exports = {
             
             // Check if an exam_report record already exists
             const [existingReport] = await pool.query(`
-                SELECT id FROM exam_reports 
+                SELECT id, is_completed FROM exam_reports 
                 WHERE candidate_id = ? AND exam_id = ?
             `, [candidateId, examId]);
             
             if (existingReport.length === 0) {
                 await pool.query('ROLLBACK');
                 return { error: 'This exam is not assigned to this candidate' };
+            }
+            
+            // Check if exam is already completed
+            if (existingReport[0].is_completed === 1) {
+                await pool.query('ROLLBACK');
+                return { error: 'This exam has already been completed' };
             }
             
             const reportId = existingReport[0].id;
@@ -206,10 +222,10 @@ module.exports = {
             const totalQuestions = questionsRows.length;
             const score = (correctAnswers / totalQuestions) * 100;
             
-            // Update the existing exam report instead of creating a new one
+            // Update the existing exam report with score and mark as completed
             await pool.query(`
                 UPDATE exam_reports 
-                SET score = ?, updated_at = NOW()
+                SET score = ?, is_completed = 1, updated_at = NOW()
                 WHERE id = ?
             `, [score, reportId]);
             
@@ -225,6 +241,7 @@ module.exports = {
                 total_questions: totalQuestions,
                 correct_answers: correctAnswers,
                 score: score,
+                is_completed: true,
                 submission_date: new Date()
             };
         } catch (error) {
@@ -256,10 +273,7 @@ module.exports = {
                     er.score,
                     er.report_date,
                     c.category as exam_category,
-                    CASE 
-                        WHEN er.score > 0 THEN 1 
-                        ELSE 0 
-                    END as is_completed
+                    er.is_completed
                 FROM exam_reports er
                 JOIN exams e ON er.exam_id = e.id
                 LEFT JOIN categories c ON e.category_id = c.id
@@ -290,13 +304,19 @@ module.exports = {
             const avgScore = avgScoreRows.length > 0 ? avgScoreRows[0].avg_score : 0;
             const totalExams = avgScoreRows.length > 0 ? avgScoreRows[0].total_exams : 0;
             
+            // Convert is_completed integer to boolean for response
+            const reportsWithBooleanStatus = reportsRows.map(report => ({
+                ...report,
+                is_completed: report.is_completed === 1
+            }));
+            
             return {
                 candidate_id: candidateId,
                 candidate_name: candidateRows[0].full_name,
                 total_reports: reportsRows.length,
                 average_score: avgScore,
                 total_exams_taken: totalExams,
-                reports: reportsRows
+                reports: reportsWithBooleanStatus
             };
         } catch (error) {
             console.error('Error getting exam reports for candidate:', error);
