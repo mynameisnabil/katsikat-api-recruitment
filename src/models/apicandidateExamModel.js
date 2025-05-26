@@ -51,7 +51,7 @@ module.exports = {
     },
 
     // Get detailed information about a specific exam for a candidate
-    getExamDetailForCandidate: async (candidateId, examId) => {
+     getExamDetailForCandidate: async (candidateId, examId) => {
         try {
             // First check if the candidate exists
             const [candidateRows] = await pool.query(`
@@ -112,7 +112,7 @@ module.exports = {
                     id as report_id,
                     score,
                     report_date,
-                    er.is_completed
+                    is_completed
                 FROM exam_reports
                 WHERE candidate_id = ? AND exam_id = ?
                 ORDER BY report_date DESC
@@ -144,6 +144,7 @@ module.exports = {
             throw error;
         }
     },
+
 
     // Submit exam answers for a candidate
     submitExamAnswers: async (candidateId, examId, answers) => {
