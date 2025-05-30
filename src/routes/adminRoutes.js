@@ -21,7 +21,7 @@ const isSuperAdmin = async (req, res, next) => {
 
         // Periksa apakah role adalah admin atau superadmin
         if (decoded.role !== 'superadmin') {
-            return res.status(403).json({ status: "FAILED", message: "Hanya admin dan superadmin yang diperbolehkan" });
+            return res.status(403).json({ status: "FAILED", message: "Hanya superadmin yang diperbolehkan" });
         }
 
         // Periksa token di Redis

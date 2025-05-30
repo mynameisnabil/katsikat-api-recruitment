@@ -176,7 +176,6 @@ router.post('/register', validateGlobalToken, isSuperAdmin, async (req, res) => 
 });
 
 
-// Delete 
 router.post('/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
     const { user_id } = req.body;
     if (!user_id) {
@@ -185,7 +184,15 @@ router.post('/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
 
     try {
         const result = await userModel.deleteUser(user_id);
-        if (!result) {
+        
+        if (result.success === false && result.isCandidate) {
+            return res.status(400).json({ 
+                status: "FAILED", 
+                message: "User tidak dapat dihapus karena sudah terdaftar sebagai kandidat aktif" 
+            });
+        }
+        
+        if (!result.success) {
             return res.status(404).json({ status: "FAILED", message: "User tidak ditemukan" });
         }
 
@@ -195,6 +202,7 @@ router.post('/delete', validateGlobalToken, isSuperAdmin, async (req, res) => {
         return res.status(500).json({ status: "FAILED", message: "Terjadi kesalahan saat menghapus user" });
     }
 });
+
 
 
 
