@@ -140,6 +140,12 @@ const addCandidateToStudyMaterial = async (studyIds, candidateId) => {
         }
     }
     
+    // Update candidate_positions status_id to 2 for the candidate
+    await pool.query(
+        'UPDATE candidate_positions SET status_id = 2 WHERE candidate_id = ?',
+        [candidateId]
+    );
+    
     return results;
 };
 
