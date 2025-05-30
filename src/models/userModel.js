@@ -85,14 +85,37 @@ module.exports = {
 
 
 
-    deleteUser: async (userId) => {
-        try {
-            const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
-            return result.affectedRows > 0; // Mengembalikan true jika ada baris yang dihapus
-        } catch (error) {
-            console.error(error);
-            return false;
+deleteUser: async (userId) => {
+    try {
+        // Check if user is registered as candidate
+        const [candidateCheck] = await pool.query(
+            'SELECT COUNT(*) as count FROM candidates WHERE user_id = ?',
+            [userId]
+        );
+        
+        if (candidateCheck[0].count > 0) {
+            return { 
+                success: false, 
+                isCandidate: true,
+                message: "User tidak dapat dihapus karena sudah terdaftar sebagai kandidat"
+            };
         }
+        
+        // Proceed with deletion if not a candidate
+        const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+        
+        return { 
+            success: result.affectedRows > 0,
+            isCandidate: false
+        };
+    } catch (error) {
+        console.error(error);
+        return { 
+            success: false, 
+            isCandidate: false,
+            error: error.message
+        };
     }
+}
     
 };
