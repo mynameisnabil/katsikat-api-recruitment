@@ -155,6 +155,12 @@ const assignCandidateToExam = async (examId, candidateId) => {
             [examId, candidateId, 0]
         );
 
+        // Update candidate_positions status_id to 3 for the candidate
+        await connection.query(
+            'UPDATE candidate_positions SET status_id = 3 WHERE candidate_id = ?',
+            [candidateId]
+        );
+
         return { success: true, message: "Candidate berhasil ditambahkan ke exam" };
     } catch (error) {
         throw error;
@@ -162,7 +168,6 @@ const assignCandidateToExam = async (examId, candidateId) => {
         connection.release();
     }
 };
-
 
 
 
@@ -265,7 +270,7 @@ const updateQuestion = async (questionId, questionData) => {
     }
     
     const [result] = await pool.query(
-        'UPDATE questions SET question = ?, option_A = ?, option_B = ?, option_C = ?, option_D = ?, answer_key = ?, updated_at = NOW() WHERE id = ?',
+        'UPDATE questions SET question_text = ?, option_A = ?, option_B = ?, option_C = ?, option_D = ?, answer_key = ?, updated_at = NOW() WHERE id = ?',
         [question, option_A, option_B, option_C, option_D, answer_key, questionId]
     );
     

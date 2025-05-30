@@ -2,96 +2,102 @@ const pool = require('../config/db');
 
 const interviewScheduleModel = {
     // Add candidate to interview schedule with up to 3 admins, now supports link
-    addCandidateToInterviewSchedule: async (candidateId, candidatePositionId, interviewDate, interviewTime, notes, adminIds, link) => {
-        try {
-            // Convert to array if single ID is provided
-            if (!Array.isArray(adminIds)) {
-                adminIds = [adminIds];
-            }
-            
-            // Remove duplicates, convert to numbers, and limit to 3 admins
-            adminIds = [...new Set(adminIds.map(id => parseInt(id)))]
-                .filter(id => !isNaN(id))
-                .slice(0, 3); // Maksimal 3 admin
-            
-            if (adminIds.length === 0) {
-                throw new Error('Admin ID tidak valid');
-            }
-            
-            // Check if candidate exists
-            const [candidateRows] = await pool.query(
-                'SELECT id FROM candidates WHERE id = ?',
-                [candidateId]
-            );
-            
-            if (candidateRows.length === 0) {
-                throw new Error('Kandidat tidak ditemukan');
-            }
-            
-            // Check if candidate position exists
-            const [positionRows] = await pool.query(
-                'SELECT id FROM candidate_positions WHERE position_id = ? AND candidate_id = ?',
-                [candidatePositionId, candidateId]
-            );
-            
-            if (positionRows.length === 0) {
-                throw new Error('Posisi kandidat tidak ditemukan');
-            }
-            
-            // Validate admin IDs - check if they exist and have admin/superadmin role
-            const adminPlaceholders = adminIds.map(() => '?').join(',');
-            const [adminRows] = await pool.query(
-                `SELECT id, username, full_name FROM users WHERE id IN (${adminPlaceholders}) AND role IN ('admin', 'superadmin')`,
-                adminIds
-            );
-            
-            if (adminRows.length !== adminIds.length) {
-                const validAdminIds = adminRows.map(row => row.id);
-                const invalidAdminIds = adminIds.filter(id => !validAdminIds.includes(id));
-                throw new Error(`Admin ID tidak valid atau tidak memiliki role admin/superadmin: ${invalidAdminIds.join(', ')}`);
-            }
-            
-            // Prepare admin values (fill remaining slots with NULL)
-            const admin1 = adminIds[0] || null;
-            const admin2 = adminIds[1] || null;
-            const admin3 = adminIds[2] || null;
-            
-            // Check if interview schedule already exists for this candidate position
-            const [existingRows] = await pool.query(
-                'SELECT id FROM interview_schedules WHERE candidate_id = ? AND candidate_position_id = ?',
-                [candidateId, candidatePositionId]
-            );
-            
-            let scheduleId;
-            let isUpdated = false;
-            
-            if (existingRows.length > 0) {
-                // Update existing interview schedule
-                scheduleId = existingRows[0].id;
-                await pool.query(
-                    'UPDATE interview_schedules SET interview_date = ?, interview_time = ?, notes = ?, admin_1 = ?, admin_2 = ?, admin_3 = ?, link = ? WHERE id = ?',
-                    [interviewDate, interviewTime, notes, admin1, admin2, admin3, link, scheduleId]
-                );
-                isUpdated = true;
-            } else {
-                // Create new interview schedule
-                const [result] = await pool.query(
-                    'INSERT INTO interview_schedules (candidate_id, candidate_position_id, interview_date, interview_time, notes, admin_1, admin_2, admin_3, link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [candidateId, candidatePositionId, interviewDate, interviewTime, notes, admin1, admin2, admin3, link]
-                );
-                scheduleId = result.insertId;
-            }
-            
-            return {
-                id: scheduleId,
-                updated: isUpdated,
-                assigned_admins: adminRows
-            };
-        } catch (error) {
-            console.error('Error adding candidate to interview schedule:', error);
-            throw error;
+ addCandidateToInterviewSchedule: async (candidateId, candidatePositionId, interviewDate, interviewTime, notes, adminIds, link) => {
+    try {
+        // Convert to array if single ID is provided
+        if (!Array.isArray(adminIds)) {
+            adminIds = [adminIds];
         }
-    },
+        
+        // Remove duplicates, convert to numbers, and limit to 3 admins
+        adminIds = [...new Set(adminIds.map(id => parseInt(id)))]
+            .filter(id => !isNaN(id))
+            .slice(0, 3); // Maksimal 3 admin
+        
+        if (adminIds.length === 0) {
+            throw new Error('Admin ID tidak valid');
+        }
+        
+        // Check if candidate exists
+        const [candidateRows] = await pool.query(
+            'SELECT id FROM candidates WHERE id = ?',
+            [candidateId]
+        );
+        
+        if (candidateRows.length === 0) {
+            throw new Error('Kandidat tidak ditemukan');
+        }
+        
+        // Check if candidate position exists
+        const [positionRows] = await pool.query(
+            'SELECT id FROM candidate_positions WHERE position_id = ? AND candidate_id = ?',
+            [candidatePositionId, candidateId]
+        );
+        
+        if (positionRows.length === 0) {
+            throw new Error('Posisi kandidat tidak ditemukan');
+        }
+        
+        // Validate admin IDs - check if they exist and have admin/superadmin role
+        const adminPlaceholders = adminIds.map(() => '?').join(',');
+        const [adminRows] = await pool.query(
+            `SELECT id, username, full_name FROM users WHERE id IN (${adminPlaceholders}) AND role IN ('admin', 'superadmin')`,
+            adminIds
+        );
+        
+        if (adminRows.length !== adminIds.length) {
+            const validAdminIds = adminRows.map(row => row.id);
+            const invalidAdminIds = adminIds.filter(id => !validAdminIds.includes(id));
+            throw new Error(`Admin ID tidak valid atau tidak memiliki role admin/superadmin: ${invalidAdminIds.join(', ')}`);
+        }
+        
+        // Prepare admin values (fill remaining slots with NULL)
+        const admin1 = adminIds[0] || null;
+        const admin2 = adminIds[1] || null;
+        const admin3 = adminIds[2] || null;
+        
+        // Check if interview schedule already exists for this candidate position
+        const [existingRows] = await pool.query(
+            'SELECT id FROM interview_schedules WHERE candidate_id = ? AND candidate_position_id = ?',
+            [candidateId, candidatePositionId]
+        );
+        
+        let scheduleId;
+        let isUpdated = false;
+        
+        if (existingRows.length > 0) {
+            // Update existing interview schedule
+            scheduleId = existingRows[0].id;
+            await pool.query(
+                'UPDATE interview_schedules SET interview_date = ?, interview_time = ?, notes = ?, admin_1 = ?, admin_2 = ?, admin_3 = ?, link = ? WHERE id = ?',
+                [interviewDate, interviewTime, notes, admin1, admin2, admin3, link, scheduleId]
+            );
+            isUpdated = true;
+        } else {
+            // Create new interview schedule
+            const [result] = await pool.query(
+                'INSERT INTO interview_schedules (candidate_id, candidate_position_id, interview_date, interview_time, notes, admin_1, admin_2, admin_3, link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [candidateId, candidatePositionId, interviewDate, interviewTime, notes, admin1, admin2, admin3, link]
+            );
+            scheduleId = result.insertId;
+        }
+        
+        // Update candidate_positions status_id to 4 for the specific candidate position
+        await pool.query(
+            'UPDATE candidate_positions SET status_id = 4 WHERE candidate_id = ? AND position_id = ?',
+            [candidateId, candidatePositionId]
+        );
+        
+        return {
+            id: scheduleId,
+            updated: isUpdated,
+            assigned_admins: adminRows
+        };
+    } catch (error) {
+        console.error('Error adding candidate to interview schedule:', error);
+        throw error;
+    }
+},
     
     // Get interview schedules for candidate
     getInterviewSchedulesForCandidate: async (candidateId) => {
