@@ -147,110 +147,129 @@ module.exports = {
 
 
     // Submit exam answers for a candidate
-    submitExamAnswers: async (candidateId, examId, answers) => {
-        try {
-            // Begin transaction
-            await pool.query('START TRANSACTION');
+submitExamAnswers: async (candidateId, examId, answers) => {
+    try {
+        // Begin transaction
+        await pool.query('START TRANSACTION');
+        
+        // First, verify the candidate and exam exist
+        const [candidateRows] = await pool.query(`
+            SELECT id FROM candidates WHERE id = ?
+        `, [candidateId]);
+        
+        if (candidateRows.length === 0) {
+            await pool.query('ROLLBACK');
+            return { error: 'Candidate not found' };
+        }
+        
+        // Check if the exam exists
+        const [examRows] = await pool.query(`
+            SELECT id FROM exams WHERE id = ?
+        `, [examId]);
+        
+        if (examRows.length === 0) {
+            await pool.query('ROLLBACK');
+            return { error: 'Exam not found' };
+        }
+        
+        // Check if an exam_report record already exists
+        const [existingReport] = await pool.query(`
+            SELECT id, is_completed FROM exam_reports 
+            WHERE candidate_id = ? AND exam_id = ?
+        `, [candidateId, examId]);
+        
+        if (existingReport.length === 0) {
+            await pool.query('ROLLBACK');
+            return { error: 'This exam is not assigned to this candidate' };
+        }
+        
+        // Check if exam is already completed
+        if (existingReport[0].is_completed === 1) {
+            await pool.query('ROLLBACK');
+            return { error: 'This exam has already been completed' };
+        }
+        
+        const reportId = existingReport[0].id;
+        
+        // Get all questions for this exam with their answer keys
+        const [questionsRows] = await pool.query(`
+            SELECT id, answer_key
+            FROM questions
+            WHERE exam_id = ?
+        `, [examId]);
+        
+        if (questionsRows.length === 0) {
+            await pool.query('ROLLBACK');
+            return { error: 'No questions found for this exam' };
+        }
+        
+        // Create a map of question_id to answer_key for easier lookup
+        const questionAnswerMap = {};
+        questionsRows.forEach(q => {
+            questionAnswerMap[q.id] = q.answer_key;
+        });
+        
+        // Create a map of submitted answers for quick lookup
+        const submittedAnswersMap = {};
+        answers.forEach(answer => {
+            submittedAnswersMap[answer.question_id] = answer.selected_option;
+        });
+        
+        // Calculate score - check ALL questions, not just submitted answers
+        let correctAnswers = 0;
+        const unansweredQuestions = [];
+        
+        questionsRows.forEach(question => {
+            const questionId = question.id;
+            const correctAnswer = question.answer_key;
+            const submittedAnswer = submittedAnswersMap[questionId];
             
-            // First, verify the candidate and exam exist
-            const [candidateRows] = await pool.query(`
-                SELECT id FROM candidates WHERE id = ?
-            `, [candidateId]);
-            
-            if (candidateRows.length === 0) {
-                await pool.query('ROLLBACK');
-                return { error: 'Candidate not found' };
-            }
-            
-            // Check if the exam exists
-            const [examRows] = await pool.query(`
-                SELECT id FROM exams WHERE id = ?
-            `, [examId]);
-            
-            if (examRows.length === 0) {
-                await pool.query('ROLLBACK');
-                return { error: 'Exam not found' };
-            }
-            
-            // Check if an exam_report record already exists
-            const [existingReport] = await pool.query(`
-                SELECT id, is_completed FROM exam_reports 
-                WHERE candidate_id = ? AND exam_id = ?
-            `, [candidateId, examId]);
-            
-            if (existingReport.length === 0) {
-                await pool.query('ROLLBACK');
-                return { error: 'This exam is not assigned to this candidate' };
-            }
-            
-            // Check if exam is already completed
-            if (existingReport[0].is_completed === 1) {
-                await pool.query('ROLLBACK');
-                return { error: 'This exam has already been completed' };
-            }
-            
-            const reportId = existingReport[0].id;
-            
-            // Get all questions for this exam with their answer keys
-            const [questionsRows] = await pool.query(`
-                SELECT id, answer_key
-                FROM questions
-                WHERE exam_id = ?
-            `, [examId]);
-            
-            if (questionsRows.length === 0) {
-                await pool.query('ROLLBACK');
-                return { error: 'No questions found for this exam' };
-            }
-            
-            // Create a map of question_id to answer_key for easier lookup
-            const questionAnswerMap = {};
-            questionsRows.forEach(q => {
-                questionAnswerMap[q.id] = q.answer_key;
-            });
-            
-            // Calculate score based on correct answers
-            let correctAnswers = 0;
-            
-            answers.forEach(answer => {
-                if (questionAnswerMap[answer.question_id] && 
-                    questionAnswerMap[answer.question_id] === answer.selected_option) {
+            if (submittedAnswer) {
+                // Question was answered - check if correct
+                if (submittedAnswer === correctAnswer) {
                     correctAnswers++;
                 }
-            });
-            
-            const totalQuestions = questionsRows.length;
-            const score = (correctAnswers / totalQuestions) * 100;
-            
-            // Update the existing exam report with score and mark as completed
-            await pool.query(`
-                UPDATE exam_reports 
-                SET score = ?, is_completed = 1, updated_at = NOW()
-                WHERE id = ?
-            `, [score, reportId]);
-            
-            // The trigger on exam_reports will automatically update candidate_exam_reports
-            
-            // Commit transaction
-            await pool.query('COMMIT');
-            
-            return {
-                report_id: reportId,
-                candidate_id: candidateId,
-                exam_id: examId,
-                total_questions: totalQuestions,
-                correct_answers: correctAnswers,
-                score: score,
-                is_completed: true,
-                submission_date: new Date()
-            };
-        } catch (error) {
-            // Rollback transaction in case of error
-            await pool.query('ROLLBACK');
-            console.error('Error submitting exam answers:', error);
-            throw error;
-        }
-    },
+            } else {
+                // Question was not answered - mark as unanswered (automatically wrong)
+                unansweredQuestions.push(questionId);
+            }
+        });
+        
+        const totalQuestions = questionsRows.length;
+        const score = (correctAnswers / totalQuestions) * 100;
+        
+        // Update the existing exam report with score and mark as completed
+        await pool.query(`
+            UPDATE exam_reports 
+            SET score = ?, is_completed = 1, updated_at = NOW()
+            WHERE id = ?
+        `, [score, reportId]);
+        
+        // The trigger on exam_reports will automatically update candidate_exam_reports
+        
+        // Commit transaction
+        await pool.query('COMMIT');
+        
+        return {
+            report_id: reportId,
+            candidate_id: candidateId,
+            exam_id: examId,
+            total_questions: totalQuestions,
+            answered_questions: answers.length,
+            unanswered_questions: unansweredQuestions.length,
+            unanswered_question_ids: unansweredQuestions,
+            correct_answers: correctAnswers,
+            score: score,
+            is_completed: true,
+            submission_date: new Date()
+        };
+    } catch (error) {
+        // Rollback transaction in case of error
+        await pool.query('ROLLBACK');
+        console.error('Error submitting exam answers:', error);
+        throw error;
+    }
+},
 
     // Get list of exam reports for a candidate
     getExamReportsForCandidate: async (candidateId, examId = null) => {

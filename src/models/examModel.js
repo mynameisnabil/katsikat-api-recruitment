@@ -143,16 +143,31 @@ const assignCandidateToExam = async (examId, candidateId) => {
             'SELECT id FROM exam_reports WHERE exam_id = ? AND candidate_id = ?',
             [examId, candidateId]
         );
+        
         if (existing.length > 0) {
-            return { success: false, message: "Candidate sudah terdaftar pada exam ini" };
+            // Jika sudah ada, reset is_completed ke 0 dan score ke 0
+            await connection.query(
+                `UPDATE exam_reports 
+                SET is_completed = 0, score = 0, updated_at = NOW()
+                WHERE exam_id = ? AND candidate_id = ?`,
+                [examId, candidateId]
+            );
+
+            // Update candidate_positions status_id to 3 for the candidate
+            await connection.query(
+                'UPDATE candidate_positions SET status_id = 3 WHERE candidate_id = ?',
+                [candidateId]
+            );
+
+            return { success: true, message: "Candidate berhasil di assign ulang" };
         }
 
-        // Insert data baru dengan created_at dan updated_at
+        // Insert data baru jika belum ada dengan created_at dan updated_at
         await connection.query(
             `INSERT INTO exam_reports 
-            (exam_id, candidate_id, score, report_date, created_at, updated_at) 
-            VALUES (?, ?, ?, CURRENT_DATE, NOW(), NOW())`,
-            [examId, candidateId, 0]
+            (exam_id, candidate_id, score, is_completed, report_date, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, CURRENT_DATE, NOW(), NOW())`,
+            [examId, candidateId, 0, 0]
         );
 
         // Update candidate_positions status_id to 3 for the candidate
