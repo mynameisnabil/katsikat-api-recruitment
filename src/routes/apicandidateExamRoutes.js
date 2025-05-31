@@ -108,9 +108,15 @@ router.post('/submit', validateGlobalToken, async (req, res) => {
             });
         }
         
+        // Add warning message if there are unanswered questions
+        let message = "Jawaban ujian berhasil dikirim";
+        if (result.unanswered_questions > 0) {
+            message += `. Terdapat ${result.unanswered_questions} soal yang tidak dijawab dan dianggap salah`;
+        }
+        
         return res.status(200).json({
             status: "SUCCESS",
-            message: "Jawaban ujian berhasil dikirim",
+            message: message,
             data: result
         });
     } catch (error) {
@@ -121,7 +127,6 @@ router.post('/submit', validateGlobalToken, async (req, res) => {
         });
     }
 });
-
 // POST route to get exam reports for a candidate
 router.post('/exam_report', validateGlobalToken, async (req, res) => {
     const { candidate_id, exam_id } = req.body;
