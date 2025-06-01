@@ -4,6 +4,10 @@ const pool = require('../config/db');
 const apiCandidateExamModel = require('../models/apicandidateExamModel');
 const { validateGlobalToken } = require('../middleware/authMiddleware');
 require('dotenv').config();
+const redis = require('ioredis');
+const redisClient = new redis();
+const jwt = require('jsonwebtoken');
+
 
 const isCandidate = async (req, res, next) => {
     // Ambil token dari header Authorization
